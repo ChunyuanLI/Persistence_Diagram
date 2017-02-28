@@ -1,0 +1,180 @@
+% compute_distance
+
+
+% load settings
+setting_up;
+skip_coding = 0;
+DescriptorType = 'SGWS';
+
+% load dictionary
+load(fullfile(VOCAB_DIR, ['dict_' num2str(VOCAB_SIZES) '_desc_' DescriptorType '.mat']), 'dict', 'sigma');
+[nBases, dimDesc] = size(dict);
+dimFea = sum(nBases*pyramid);
+% codes_Size = 2*dSize+ 2*(dSize-1) + dSize*dSize+(dSize-1)*(dSize-1);
+codes_Size = dimFea;
+
+
+Specific_DESC_DIR = fullfile(DESC_DIR, DescriptorType);
+Hard_BOF_DIR  = fullfile(BOF_DIR, DescriptorType,'hard');
+Soft_BOF_DIR  = fullfile(BOF_DIR, DescriptorType,'soft');
+
+
+
+
+warning off;
+mkdir(Hard_BOF_DIR);
+mkdir(Soft_BOF_DIR);
+warning on;   
+
+Meshes = dir(fullfile(MESH_DIR, '*.mat'));
+SHAPES = {Meshes.name};
+
+
+% Statistics
+tic;
+nerr  = 0;
+nskip = 0;
+nok   = 0;  
+fprintf(1, 'Compute the bof codes of the mesh...\n');
+
+
+tic
+for s =  1:length(SHAPES), 
+    
+    shapename = SHAPES{s};
+    fprintf(1, '  %-30s \t ', shapename);
+    
+    if SKIP_EXISTING && exist(fullfile(Hard_BOF_DIR, shapename), 'file'),
+        fprintf(1, 'file already exists, skipping\n');
+        nskip = nskip+1;
+        continue;
+    end
+
+    % Load eigendecomposition
+    load(fullfile(EVECS_DIR, shapename), 'evecs', 'evals');
+
+    % Load descriptor
+    load(fullfile(Specific_DESC_DIR, shapename), 'desc');
+    
+    % coding with spectral descriptors via BoF
+    [beta1,beta2] = average_pooling_hard(evecs, desc, dict, pyramid);    
+    % Save result
+    save(fullfile(Hard_BOF_DIR, shapename), 'desc');
+
+
+    str = fprintf('Spectral descriptor of %s is extracted.\n', shapename);
+    nok = nok+1;
+
+end
+toc
+
+% Statistics
+fprintf(1, '\n LB Computation complete\n');
+fprintf(1, ' Elapsed time:   %s\n', toc);
+fprintf(1, ' Total Shapes:   %d\n', length(SHAPES));
+fprintf(1, ' Average time:   %s\n', toc/length(SHAPES));
+fprintf(1, ' Computed:       %d\n', nok);
+fprintf(1, ' Skipped:        %d\n', nskip);
+fprintf(1, ' Errors:         %d\n', nerr);
+
+
+
+
+%% calculate the sparse coding feature
+
+
+numFea = length(database.path);
+
+dSize = size(B, 1);
+
+
+sc_codes_name = [DescriptorMode,'_nBases_',num2str(nBases),'_pyramid_',num2str(pyramid(end)),'_bog_codes.mat'];
+
+disp('==================================================');
+fprintf('Calculating the BoF coding feature...\n');
+disp('==================================================');
+
+
+if ~skip_coding,
+
+    eigens = dir(fullfile(rt_eigen_dir, '*.mat'));
+
+    for iter1 = 1:numFea,  
+        if ~mod(iter1, 50),
+            fprintf('.\n');
+        else
+            fprintf('.');
+        end;
+        fpath = database.path{iter1};
+        load(fpath);
+        eigenpath = fullfile(rt_eigen_dir, eigens(iter1).name);
+        load(eigenpath);
+        if knn,
+            [sc_fea1(:, iter1), sc_fea2(:, iter1)]= LLC_pooling(PHI, feaSet, B', pyramid, knn);
+            %[sc_fea1(:, iter1), sc_fea2(:, iter1)]= sc_approx_pooling(PHI, feaSet, B, pyramid, gamma, knn);
+        else
+            [sc_fea1(:, iter1), sc_fea2(:, iter1)] = statistic_pooling_dic(PHI, feaSet, B, pyramid);
+           % [sc_fea1(:, iter1), sc_fea2(:, iter1)] = average_pooling(PHI, feaSet, B, pyramid);
+            %[sc_fea1(:, iter1), sc_fea2(:, iter1)]= sc_pooling(PHI, feaSet, B, pyramid, gamma);
+        end
+    end;
+    
+  %  save(fullfile('sc_codes', dataSet,sc_codes_name),'sc_fea1','sc_fea2');
+else
+    load(fullfile('sc_codes', dataSet,sc_codes_name),'sc_fea1','sc_fea2');
+end
+
+%% evaluate the performance of the computed feature using minimum histgram distance
+
+[dimFea, numFea] = size(sc_fea1);
+
+% total spatial bins
+tBins = sum(pyramid);
+dimFeaUnit = dimFea/tBins;
+
+% spatial levels
+pLevels = length(pyramid);
+% addpath(genpath('C:\Users\CNL10\Desktop\ScSPM\shapegoogle_code'));
+D_tensor = zeros(numFea,numFea,pLevels);
+for iter1 = 1:pLevels
+%     fea1 = sc_fea1;
+%     fea2 = sc_fea2;
+    
+% fea1 = sc_fea1(sum(pyramid(1:2))*dimFeaUnit+1:sum(pyramid(1:iter1+1))*dimFeaUnit,:);
+% fea2 = sc_fea2(sum(pyramid(1:2))*dimFeaUnit+1:sum(pyramid(1:iter1+1))*dimFeaUnit,:);
+% 
+fea1 = sc_fea1(1:sum(pyramid(1:iter1))*dimFeaUnit,:);
+fea2 = sc_fea2(1:sum(pyramid(1:iter1))*dimFeaUnit,:);
+
+D = zeros(numFea,numFea);
+for i = 1:numFea
+    i;
+    AF1 = fea1(:,i);
+    AF2 = fea2(:,i);
+    for j =1:numFea
+        j;
+        BF1 = fea1(:,j);
+        BF2 = fea2(:,j);        
+% 
+%         d1 = sum(abs((AF1-BF1).^2./(AF1+BF1+eps)));      
+%         d2 = sum(abs((AF1-BF2).^2./(AF1+BF2+eps))); 
+
+        d1 = sum(abs((AF1-BF1)));      
+        d2 = sum(abs((AF1-BF2)));         
+        
+        d = min(d1, d2);
+        D(i,j) = d ;      
+    end    
+end
+
+D_tensor(:,:,iter1) = D;
+
+switch dataSet
+    
+    case 'SHREC2010';
+        Evaluation_DistanceMatrix_2010(D)
+    case 'ShapeGoogle';
+        compute_shapegoogle_performance(D)
+end
+
+end
