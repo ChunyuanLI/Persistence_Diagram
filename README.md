@@ -10,7 +10,7 @@
 3. Find all PD related code in 'PD_shape/scripts/'
 
 
-### 3D Shape Retrieval
+### Hand Gesture Classification
 1. Data: Please unzip the data in 'PD_shape/Data.zip'
 
 2. Find all PD related code in 'PD_shape/'
