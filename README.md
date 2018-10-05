@@ -2,9 +2,19 @@
 
 ## Experiments
 
-Go to folder 'scripts/experiments_nonrigid/'
+### 3D Shape Retrieval
+1. Go to folder 'PD_shape/scripts/experiments_nonrigid/'
 
-Run ‘compute_LB_eigen.m’ to obtain the eigenvalues and eigenvector for meshes
+2. Run ‘compute_LB_eigen.m’ to obtain the eigenvalues and eigenvector for meshes
+
+3. Find all PD related code in 'PD_shape/scripts/'
+
+
+### 3D Shape Retrieval
+1. Data: Please unzip the data in 'PD_shape/Data.zip'
+
+2. Find all PD related code in 'PD_shape/'
+
 
 
 ## Citation
