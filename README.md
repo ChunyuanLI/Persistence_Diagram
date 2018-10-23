@@ -3,7 +3,8 @@
 ## Experiments
 
 ### 3D Shape Retrieval
-1. Go to folder 'PD_shape/scripts/experiments_nonrigid/'
+1. Go to folder 'PD_shape/scripts/experiments_nonrigid/'. Please donwload the 3D mesh shape datasets [here](https://drive.google.com/open?id=1P0cXb6BHX4_ZrQvZ46LvDkFtaI-xSOPz)
+
 
 2. Run ‘compute_LB_eigen.m’ to obtain the eigenvalues and eigenvector for meshes
 
